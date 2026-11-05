@@ -1,0 +1,57 @@
+{
+  "unidade": "segundos",
+  "por_condicao": {
+    "sem_cache": {
+      "n": 15,
+      "mean": 0.26995366666666665,
+      "median": 0.268215,
+      "std": 0.01005544601317164,
+      "min": 0.259129,
+      "max": 0.291253,
+      "skewness": 1.1405552551307698,
+      "lognormal": {
+        "mu": -1.310137760570959,
+        "sigma": 0.03661621463609861
+      }
+    },
+    "com_cache": {
+      "n": 15,
+      "mean": 0.12256873333333332,
+      "median": 0.110464,
+      "std": 0.027635215252765206,
+      "min": 0.101376,
+      "max": 0.196738,
+      "skewness": 1.851486026721714,
+      "lognormal": {
+        "mu": -2.1189375640269206,
+        "sigma": 0.19747000211817942
+      }
+    }
+  },
+  "pareado": {
+    "n_pares": 15,
+    "diff_sem_menos_com": {
+      "n": 15,
+      "mean": 0.14738493333333336,
+      "median": 0.15417200000000003,
+      "std": 0.020068730711043512,
+      "min": 0.09451499999999999,
+      "max": 0.171082,
+      "skewness": -1.4173916739011547
+    },
+    "efeito_relativo_mediano": 0.5748075238148502
+  },
+  "simulacao": {
+    "distribuicao": "lognormal",
+    "n_por_grupo": 15,
+    "sem_cache": {
+      "mu": -1.310137760570959,
+      "sigma": 0.03661621463609861
+    },
+    "com_cache": {
+      "mu": -2.1189375640269206,
+      "sigma": 0.19747000211817942
+    },
+    "nota": "Parâmetros mu/sigma estimados em log(tempo_s) a partir dos dados reais de data/builds.csv."
+  }
+}

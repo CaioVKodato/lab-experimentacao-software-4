@@ -17,7 +17,15 @@ Tempo de build antes e depois de ativar o cache.
 
 ## Como rodar
 
-*(preencher na S01 — comando único do dashboard)*
+Coleta dos tempos de build (Issue #1):
+
+```bash
+python coletar_builds.py
+```
+
+Gera `data/builds.csv` (~15 pares com/sem cache).
+
+Dashboard (S01/S02): *(preencher — comando único)*
 
 ## Sprint 1 (Issues)
 

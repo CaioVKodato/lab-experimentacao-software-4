@@ -25,6 +25,14 @@ python coletar_builds.py
 
 Gera `data/builds.csv` (~15 pares com/sem cache).
 
+Estimativa de parâmetros (Issue #2):
+
+```bash
+python estimar_params.py
+```
+
+Gera `data/params.json`. Cenário em `docs/cenario.md`.
+
 Dashboard (S01/S02): *(preencher — comando único)*
 
 ## Sprint 1 (Issues)

@@ -42,6 +42,15 @@ python simular_dados.py --seed 7 --n 30
 
 Gera `data/simulado.csv` (mesmo formato de `builds.csv`), com pares lognormais com os parâmetros de `data/params.json`. Mesma semente → mesmo arquivo. Em código: `simulacao.gerar_pares(sim, n, rng)`.
 
+t pareado × Wilcoxon pareado no exemplo simulado (Issue #4):
+
+```bash
+python testar_simulado.py                       # data/simulado.csv
+python testar_simulado.py --input data/builds.csv --output data/testes_reais.json
+```
+
+Grava `data/testes_simulado.json` com estatística, p-valor e interpretação de cada teste (bicaudal, α = 0,05). Em código: `testes.aplicar_testes(sem, com)`.
+
 Dashboard (S01/S02): *(preencher — comando único)*
 
 ## Sprint 1 (Issues)

@@ -33,6 +33,15 @@ python estimar_params.py
 
 Gera `data/params.json`. Cenário em `docs/cenario.md`.
 
+Dados simulados (Issue #3):
+
+```bash
+python simular_dados.py            # semente 42, n do params.json
+python simular_dados.py --seed 7 --n 30
+```
+
+Gera `data/simulado.csv` (mesmo formato de `builds.csv`), com pares lognormais com os parâmetros de `data/params.json`. Mesma semente → mesmo arquivo. Em código: `simulacao.gerar_pares(sim, n, rng)`.
+
 Dashboard (S01/S02): *(preencher — comando único)*
 
 ## Sprint 1 (Issues)

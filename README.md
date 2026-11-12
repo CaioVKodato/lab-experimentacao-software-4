@@ -23,7 +23,7 @@ Coleta dos tempos de build (Issue #1):
 python coletar_builds.py
 ```
 
-Gera `data/builds.csv` (~15 pares com/sem cache).
+Gera `data/builds.csv` (30 pares com/sem cache; mude com `--n-pairs`).
 
 Estimativa de parâmetros (Issue #2):
 

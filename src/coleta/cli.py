@@ -4,19 +4,19 @@ import argparse
 import sys
 from pathlib import Path
 
-from .config import CollectConfig, DEMO_BUILD, DEFAULT_CSV
+from .config import CollectConfig, DEFAULT_CSV, DEFAULT_N_PAIRS, DEMO_BUILD
 from .runner import collect_build_times
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Coleta tempos de build com e sem cache (Lab 04 / S01)."
+        description="Coleta tempos de build com e sem cache (Lab 04)."
     )
     parser.add_argument(
         "--n-pairs",
         type=int,
-        default=15,
-        help="quantidade de pares (sem_cache + com_cache). padrão: 15",
+        default=DEFAULT_N_PAIRS,
+        help=f"quantidade de pares (sem_cache + com_cache). padrão: {DEFAULT_N_PAIRS}",
     )
     parser.add_argument(
         "--output",

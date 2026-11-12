@@ -46,8 +46,33 @@ def _lognormal_base(
     return sem, com
 
 
-# Q3 registra aqui as situações que violam os pressupostos do t
-GERADORES: dict[str, Gerador] = {"lognormal": _lognormal_base}
+PROB_OUTLIER = 0.05
+FATOR_OUTLIER = 3.0
+
+
+def _lognormal_outliers(
+    rng: np.random.Generator, sim: dict[str, Any], repeticoes: int, n: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Base lognormal + outliers: em PROB_OUTLIER dos pares, um dos dois builds
+    (sorteado, 50/50) demora FATOR_OUTLIER vezes mais.
+
+    O lado é sorteado para a diferença continuar simétrica em torno de zero:
+    H₀ segue verdadeira para os dois testes, só a normalidade quebra.
+    """
+    sem, com = _lognormal_base(rng, sim, repeticoes, n)
+    outlier = rng.random((repeticoes, n)) < PROB_OUTLIER
+    no_sem = rng.random((repeticoes, n)) < 0.5
+    sem = np.where(outlier & no_sem, sem * FATOR_OUTLIER, sem)
+    com = np.where(outlier & ~no_sem, com * FATOR_OUTLIER, com)
+    return sem, com
+
+
+# formas dos dados; Q3 usa "outliers" para violar a normalidade das diferenças
+GERADORES: dict[str, Gerador] = {
+    "lognormal": _lognormal_base,
+    "outliers": _lognormal_outliers,
+}
 
 
 def intervalo_wilson(rejeicoes: int, repeticoes: int) -> tuple[float, float]:

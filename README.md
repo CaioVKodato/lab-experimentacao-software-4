@@ -68,6 +68,14 @@ python simular_q2.py --efeitos 0 0.02 0.05   # outra grade
 
 Gera `data/q2.csv`: taxa de rejeição de cada teste para efeitos de 0% a 10% de redução do tempo com cache (10.000 repetições por efeito, n = 30, semente 42). A escolha da grade está em `docs/cenario.md`.
 
+Q3 — violação dos pressupostos (Issue #15):
+
+```bash
+python simular_q3.py
+```
+
+Gera `data/q3.csv` com a coluna `condicao`: base (n = 30), outliers (5% dos pares com um build 3× mais lento), amostra pequena (n = 8) e amostra pequena + outliers. Erro tipo I (efeito 0) e poder (efeitos de 1% a 20%) de cada teste, 10.000 repetições, semente 42. A base vem junto para G3/G4 lerem um arquivo só. Detalhes em `docs/cenario.md`.
+
 Dashboard (S01/S02):
 
 ```bash

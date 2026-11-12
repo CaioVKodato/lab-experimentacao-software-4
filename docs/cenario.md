@@ -48,6 +48,22 @@ Grade: **0%, 1%, 2%, 3%, 4%, 5%, 6%, 8% e 10%**, com 10.000 repetições cada e 
 
 Por que esses valores e não o efeito real: na amostra coletada o cache reduz o tempo em ~50%, o que dá poder de 100% nos dois testes já com poucos pares — a curva seria uma linha reta em 1. Com a variação de ~7% entre builds (σ em log), a curva sai de 5% em efeito 0, passa de 80% por volta de 5% e chega a ~100% em 10%. A grade é mais fina até 6% porque é onde o poder muda rápido, e começa em zero para ligar com o Q1.
 
+### Q3: violação dos pressupostos
+
+O pressuposto violado é a **normalidade das diferenças** (sem − com), que o t pareado usa para dizer que a estatística segue uma t com n−1 graus de liberdade. O Wilcoxon pareado só pede que as diferenças sejam simétricas em torno de zero sob H₀.
+
+Situações simuladas (`python simular_q3.py` → `data/q3.csv`, coluna `condicao`; mesma grade do Q2 mais 15% e 20%, 10.000 repetições, semente 42):
+
+- **outliers (n = 30):** em 5% dos pares, um dos dois builds demora 3× mais (lado sorteado 50/50). Imita um build que pegou disco frio ou CPU ocupada.
+- **amostra pequena (n = 8):** a base lognormal com poucos pares.
+- **amostra pequena + outliers (n = 8):** as duas coisas juntas.
+
+O lado do outlier é sorteado para a diferença continuar simétrica em torno de zero: H₀ é verdadeira para os dois testes e a comparação é justa (uma diferença assimétrica de média zero tornaria H₀ falsa para o Wilcoxon). Também testamos σ maior na lognormal, mas a diferença de dois tempos i.i.d. continua quase normal e nada muda, então essa situação ficou de fora.
+
+**Por que afeta mais o t:** um outlier entra inteiro na média e, ao quadrado, no desvio padrão das diferenças. O desvio cresce mais que a média, o |t| encolhe e o teste quase não rejeita: com outliers, o erro tipo I do t cai para ~1,5% (conservador) e o poder com 5% de efeito despenca de 81% para 23%. O Wilcoxon usa postos, então um outlier vale no máximo o maior posto, e ele fica em ~5% de erro tipo I e 69% de poder.
+
+Com **n = 8** sem outliers a vantagem muda de lado: o Wilcoxon exato só tem 2⁸ = 256 resultados possíveis, então não consegue usar todo o α (erro tipo I ~3,9%) e perde poder para o t (69% × 76% com 10% de efeito). Com n = 8 + outliers, o Wilcoxon volta a ganhar nos efeitos maiores (82% × 67% com 20%).
+
 ## Expectativa antes de simular
 
 Esperamos que o **Wilcoxon pareado** se saia melhor (ou pelo menos tão bem) que o t pareado quando os dados forem bem assimétricos ou tiverem outliers — que é o caso do `com_cache` (assimetria ≈ 2.33).

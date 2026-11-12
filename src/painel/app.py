@@ -11,7 +11,7 @@ from params.io import load_builds_csv
 from simulacao import DEFAULT_SEED, gerar_pares, load_sim_params
 from testes import ALPHA, aplicar_testes, separar_pares
 
-from .graficos import fig_g1, fig_g2
+from .graficos import fig_g1, fig_g2, fig_g3, taxas_erro_tipo_i
 
 DATA = REPO_ROOT / "data"
 REPO_URL = "https://github.com/CaioVKodato/lab-experimentacao-software-4"
@@ -149,9 +149,64 @@ def secao_testes(simulados: pd.DataFrame, sim: dict) -> None:
         st.markdown(f"- {t['interpretacao']}")
 
 
+def _desvio(linha: pd.Series) -> str:
+    """Liberal/conservador só quando o IC 95% inteiro fica de um lado de α."""
+    if linha["ic95_inf"] > linha["alpha"]:
+        return "liberal"
+    if linha["ic95_sup"] < linha["alpha"]:
+        return "conservador"
+    return "ok"
+
+
+def _leitura_g3(taxas: pd.DataFrame) -> str:
+    """Texto do G3 montado a partir dos CSVs, para acompanhar a simulação."""
+    taxas = taxas.assign(desvio=taxas.apply(_desvio, axis=1))
+    alpha = float(taxas["alpha"].iloc[0])
+
+    partes = []
+    for condicao, grupo in taxas.groupby("condicao", sort=False):
+        if (grupo["desvio"] == "ok").all():
+            partes.append(f"em **{condicao}** os dois ficam perto de {alpha:.0%}")
+            continue
+        leituras = [
+            f"o {linha['teste']} "
+            + ("fica perto de α" if linha["desvio"] == "ok" else f"fica **{linha['desvio']}**")
+            + f" ({linha['taxa_rejeicao']:.1%})"
+            for _, linha in grupo.iterrows()
+        ]
+        partes.append(f"em **{condicao}** (n={grupo['n'].iloc[0]}), " + " e ".join(leituras))
+
+    distancia = (taxas["taxa_rejeicao"] - alpha).abs().groupby(taxas["teste"]).mean()
+    mais_perto = distancia.idxmin()
+    leitura = "; ".join(partes)
+    return (
+        leitura[0].upper() + leitura[1:] + ". "
+        f"Na média das situações, o **{mais_perto}** fica mais perto de {alpha:.0%} "
+        f"(desvio médio de {distancia[mais_perto] * 100:.1f} p.p. contra "
+        f"{distancia.drop(mais_perto).iloc[0] * 100:.1f} p.p.)."
+    )
+
+
+def secao_erro_tipo_i() -> None:
+    st.header("4. Erro tipo I")
+    q1, q3 = DATA / "q1.csv", DATA / "q3.csv"
+    if not (q1.exists() and q3.exists()):
+        st.warning("Rode `python simular_q1.py` e `python simular_q3.py` para gerar o G3.")
+        return
+
+    taxas = taxas_erro_tipo_i(pd.read_csv(q1), pd.read_csv(q3))
+    st.pyplot(fig_g3(taxas))
+    st.markdown(
+        "Cada barra é a proporção de p-valores < α em 10.000 conjuntos gerados com "
+        "H₀ verdadeira; um teste calibrado fica dentro da faixa cinza. Um teste "
+        "**liberal** rejeita mais que α (falso alarme de que o cache mudou o build); "
+        "um **conservador** rejeita menos e perde poder. "
+        + _leitura_g3(taxas)
+    )
+
+
 def secoes_pendentes() -> None:
     for titulo in (
-        "4. Erro tipo I",
         "5. Poder",
         "6. Dados reais",
         "7. Conclusão",
@@ -172,4 +227,5 @@ def main() -> None:
     secao_cenario(reais)
     secao_dados(reais, simulados, sim)
     secao_testes(simulados, sim)
+    secao_erro_tipo_i()
     secoes_pendentes()

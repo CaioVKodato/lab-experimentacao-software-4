@@ -51,6 +51,14 @@ python testar_simulado.py --input data/builds.csv --output data/testes_reais.jso
 
 Grava `data/testes_simulado.json` com estatística, p-valor e interpretação de cada teste (bicaudal, α = 0,05). Em código: `testes.aplicar_testes(sem, com)`.
 
+Q1 — erro tipo I (Issue #13):
+
+```bash
+python simular_q1.py
+```
+
+Gera `data/q1.csv`: 10.000 conjuntos com H₀ verdadeira (n = 30, sem e com cache da mesma lognormal), taxa de rejeição de cada teste com IC 95% (Wilson, ~±0,43 p.p.). Semente 42 → mesmo arquivo. O motor fica em `src/simulacao/motor.py`: `simular_cenario(Cenario(nome, n, efeito, tipo), sim)` serve também para Q2 (efeito > 0) e Q3 (novos tipos em `GERADORES`).
+
 Dashboard (S01/S02):
 
 ```bash

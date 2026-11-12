@@ -25,6 +25,20 @@ def separar_pares(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
     )
 
 
+def soma_postos_positivos(diffs: np.ndarray) -> float:
+    """
+    W⁺ do Wilcoxon pareado: soma dos postos de |d| das diferenças positivas.
+
+    Diferenças iguais a zero saem antes de ordenar, como no scipy
+    (zero_method="wilcox"). O scipy devolve min(W⁺, W⁻) no teste bicaudal,
+    que dá o mesmo p-valor; aqui usamos W⁺ porque é ele que o G2 mostra.
+    """
+    diffs = np.asarray(diffs, dtype=float)
+    nao_nulas = diffs[diffs != 0]
+    postos = stats.rankdata(np.abs(nao_nulas))
+    return float(postos[nao_nulas > 0].sum())
+
+
 def _interpretar(nome: str, p_valor: float, alpha: float, diff: float) -> str:
     if p_valor < alpha:
         sentido = "reduz" if diff > 0 else "aumenta"
@@ -45,7 +59,8 @@ def aplicar_testes(
     Aplica t pareado e Wilcoxon pareado (bicaudais) em sem − com.
 
     t pareado compara a média das diferenças com zero;
-    Wilcoxon compara os postos das diferenças (mediana) com zero.
+    Wilcoxon compara os postos das diferenças (mediana) com zero e
+    reporta W⁺ como estatística.
     """
     sem = np.asarray(sem, dtype=float)
     com = np.asarray(com, dtype=float)
@@ -57,7 +72,7 @@ def aplicar_testes(
     resultados = []
     for nome, estatistica, nome_estat, p_valor, centro in (
         ("t pareado", t.statistic, "t", t.pvalue, np.mean(diffs)),
-        ("Wilcoxon pareado", w.statistic, "W", w.pvalue, np.median(diffs)),
+        ("Wilcoxon pareado", soma_postos_positivos(diffs), "W⁺", w.pvalue, np.median(diffs)),
     ):
         p_valor = float(p_valor)
         resultados.append(

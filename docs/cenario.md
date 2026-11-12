@@ -2,14 +2,26 @@
 
 ## Pergunta
 
-O cache reduz o tempo de build do projeto demo?
+Ativar o cache muda o tempo de build do projeto demo?
 
 ## Hipóteses
 
-- **H₀:** a mediana (ou média, no t pareado) da diferença de tempo sem cache − com cache é zero; ativar o cache não muda o tempo de build.
-- **H₁:** a diferença é diferente de zero (bicaudal); o cache altera o tempo de build.
+Em cada par *i*, o mesmo build é medido sem e com cache. A variável analisada é a diferença
 
-Testes: **t pareado** × **Wilcoxon pareado**.
+D_i = T_sem,i − T_com,i   (segundos; positiva quando o cache deixa o build mais rápido)
+
+| Teste | H₀ (notação) | H₀ (em palavras) | H₁ (notação) | H₁ (em palavras) |
+|---|---|---|---|---|
+| t pareado | μ_D = 0 | em média, ligar o cache não muda o tempo de build | μ_D ≠ 0 | em média, o tempo muda (para menos ou para mais) |
+| Wilcoxon pareado | D simétrica em torno de 0 (mediana = 0) | ganhar ou perder tempo com o cache é igualmente provável | D deslocada de 0 (mediana ≠ 0) | o cache tende a acelerar ou a atrasar o build |
+
+Testes: **t pareado** × **Wilcoxon pareado**, com α = 0,05.
+
+### Por que bicaudal
+
+A pergunta é se o cache **muda** o tempo, não só se reduz. Antes de medir, não dava para descartar que o cache deixasse o build mais lento: com ele ligado, o build lê e grava artefatos e o manifesto em disco, um custo que pode superar a economia em projetos pequenos. O bicaudal divide α em 2,5% para cada cauda e detecta efeito nos dois sentidos. Também é a escolha mais conservadora: o valor crítico do t com 29 gl é 2,05, contra 1,70 no unicaudal. Se H₀ for rejeitada, o sinal de D diz para que lado o cache mexeu.
+
+Escolher unicaudal depois de olhar os dados (porque o cache "claramente" reduziu) dobraria o erro tipo I na prática, então a decisão foi fixada antes da coleta.
 
 ## Dados reais
 
@@ -29,6 +41,8 @@ Diferença pareada (sem − com): mediana ≈ **0.157 s**, média ≈ **0.151 s*
 Efeito relativo mediano ≈ **51%** do tempo sem cache.
 
 Os tempos são positivos e assimétricos à direita (assimetria 0.95 sem cache e 2.33 com cache), com mais dispersão quando o cache está ligado.
+
+Outliers pela regra de 1,5·IQR (gravados em `data/params.json`, `outliers_iqr`): nenhum sem cache; 2 com cache, os runs 10 (0.306 s) e 21 (0.239 s), acima do limite de 0.233 s. São eles que puxam a assimetria do `com_cache` para 2.33, e são a base real da violação por outliers do Q3. Registro completo da coleta em `data/README.md`.
 
 ## Como a simulação será gerada
 

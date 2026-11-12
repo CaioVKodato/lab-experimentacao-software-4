@@ -2,19 +2,22 @@ from __future__ import annotations
 
 import json
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 
 from coleta.config import REPO_ROOT
 from params.io import load_builds_csv
-from simulacao import load_sim_params
+from simulacao import DEFAULT_SEED, gerar_pares, load_sim_params
+from testes import ALPHA, aplicar_testes, separar_pares
 
-from .graficos import fig_g1
+from .graficos import fig_g1, fig_g2
 
 DATA = REPO_ROOT / "data"
 REPO_URL = "https://github.com/CaioVKodato/lab-experimentacao-software-4"
 PROJECT_URL = "https://github.com/users/CaioVKodato/projects/9"
 DASHBOARD_URL = None  # preencher quando publicar
+EFEITO_DIDATICO = 0.02  # deslocamento em log(tempo) do exemplo do G2
 
 
 def _resumo(df: pd.DataFrame, cond: str) -> pd.Series:
@@ -60,9 +63,47 @@ def secao_dados(reais: pd.DataFrame, simulados: pd.DataFrame, sim: dict) -> None
     )
 
 
-def secao_testes() -> None:
+def _exemplo_didatico(sim: dict) -> tuple[np.ndarray, np.ndarray]:
+    """Pares com efeito pequeno (com cache ~2% mais rápido), para o p-valor aparecer como área."""
+    sem = sim["sem_cache"]
+    sim_pequeno = {
+        **sim,
+        "com_cache": {"mu": sem["mu"] - EFEITO_DIDATICO, "sigma": sem["sigma"]},
+    }
+    return separar_pares(gerar_pares(sim_pequeno, rng=np.random.default_rng(DEFAULT_SEED)))
+
+
+def secao_testes(simulados: pd.DataFrame, sim: dict) -> None:
     st.header("3. Como os testes funcionam")
-    st.info("G2 — distribuição da estatística sob H₀ (Issue #6).")
+
+    exemplo = st.radio(
+        "Exemplo marcado no G2",
+        ("Efeito pequeno (didático)", "Simulado (efeito do cache)"),
+        horizontal=True,
+    )
+    if exemplo.startswith("Simulado"):
+        sem, com = separar_pares(simulados)
+    else:
+        sem, com = _exemplo_didatico(sim)
+    st.pyplot(fig_g2(sem, com, ALPHA, titulo=exemplo))
+
+    res_ex = {t["teste"]: t for t in aplicar_testes(sem, com, ALPHA)["testes"]}
+    p_t = res_ex["t pareado"]["p_valor"]
+    p_w = res_ex["Wilcoxon pareado"]["p_valor"]
+    st.markdown(
+        "O **t pareado** compara a média das diferenças (sem − com cache) com zero, "
+        "escalada pelo erro padrão; sob H₀ a estatística segue uma t com n−1 graus de "
+        "liberdade. O **Wilcoxon pareado** ignora o tamanho das diferenças e usa os "
+        "postos: W⁺ soma os postos das diferenças positivas e, sob H₀, cada sinal é "
+        "cara ou coroa, o que dá a distribuição exata do painel da direita. "
+        f"Como o teste é bicaudal, a região de rejeição são as duas caudas com "
+        f"{ALPHA / 2:.1%} cada. O p-valor (hachurado) é a probabilidade, supondo H₀ "
+        "verdadeira, de uma estatística tão ou mais extrema que a observada: "
+        f"{p_t:.3g} no t e {p_w:.3g} no Wilcoxon. Ele não é a probabilidade de H₀ ser "
+        "verdadeira. No exemplo didático (efeito de "
+        f"{1 - np.exp(-EFEITO_DIDATICO):.0%}) os dois ficam acima de α; no simulado, "
+        "o efeito do cache é tão grande que a área não aparece no gráfico."
+    )
 
     path = DATA / "testes_simulado.json"
     if not path.exists():
@@ -111,5 +152,5 @@ def main() -> None:
 
     secao_cenario(reais)
     secao_dados(reais, simulados, sim)
-    secao_testes()
+    secao_testes(simulados, sim)
     secoes_pendentes()

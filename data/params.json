@@ -12,6 +12,11 @@
       "lognormal": {
         "mu": -1.1500479678018474,
         "sigma": 0.06785131647343132
+      },
+      "outliers_iqr": {
+        "limite_inferior": 0.25661512499999994,
+        "limite_superior": 0.37219812500000016,
+        "builds": []
       }
     },
     "com_cache": {
@@ -25,6 +30,20 @@
       "lognormal": {
         "mu": -1.8117643393185114,
         "sigma": 0.18634571021472385
+      },
+      "outliers_iqr": {
+        "limite_inferior": 0.09001624999999999,
+        "limite_superior": 0.23308625000000002,
+        "builds": [
+          {
+            "run": 10,
+            "tempo_s": 0.306058
+          },
+          {
+            "run": 21,
+            "tempo_s": 0.23888
+          }
+        ]
       }
     }
   },

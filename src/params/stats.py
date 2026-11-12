@@ -19,6 +19,31 @@ def _group_summary(values: np.ndarray) -> dict[str, Any]:
     }
 
 
+FATOR_IQR = 1.5  # regra de Tukey (a mesma do boxplot)
+
+
+def outliers_iqr(grupo: pd.DataFrame) -> dict[str, Any]:
+    """
+    Builds fora de [Q1 − 1,5·IQR, Q3 + 1,5·IQR] numa condição.
+
+    Recebe as linhas de uma condição (colunas run e tempo_s) e devolve os
+    limites e os runs que ficaram fora, para registrar e citar no dashboard.
+    """
+    tempos = grupo["tempo_s"].astype(float)
+    q1, q3 = tempos.quantile([0.25, 0.75])
+    iqr = q3 - q1
+    inferior, superior = q1 - FATOR_IQR * iqr, q3 + FATOR_IQR * iqr
+    fora = grupo.loc[(tempos < inferior) | (tempos > superior)].sort_values("run")
+    return {
+        "limite_inferior": float(inferior),
+        "limite_superior": float(superior),
+        "builds": [
+            {"run": int(linha.run), "tempo_s": float(linha.tempo_s)}
+            for linha in fora.itertuples()
+        ],
+    }
+
+
 def _lognormal_params_from_sample(values: np.ndarray) -> dict[str, float]:
     """
     Ajusta uma lognormal pelos momentos amostrais de log(x).
@@ -57,10 +82,12 @@ def estimate_params(df: pd.DataFrame) -> dict[str, Any]:
             "sem_cache": {
                 **_group_summary(sem_vals),
                 "lognormal": _lognormal_params_from_sample(sem_vals),
+                "outliers_iqr": outliers_iqr(sem),
             },
             "com_cache": {
                 **_group_summary(com_vals),
                 "lognormal": _lognormal_params_from_sample(com_vals),
+                "outliers_iqr": outliers_iqr(com),
             },
         },
         "pareado": {

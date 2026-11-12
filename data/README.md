@@ -14,7 +14,7 @@ Comando:
 python coletar_builds.py
 ```
 
-Para cada um dos 15 pares:
+Para cada par (30 por padrão, `DEFAULT_N_PAIRS` em `src/coleta/config.py`; mude com `--n-pairs`):
 
 1. limpa o `.cache/`
 2. roda o build **sem cache** (`--no-cache`) e mede o tempo

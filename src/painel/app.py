@@ -58,7 +58,7 @@ def secao_dados(reais: pd.DataFrame, simulados: pd.DataFrame, sim: dict) -> None
         "com μ e σ estimados em log(tempo) a partir dos dados reais "
         f"(`data/params.json`), e o mesmo n={com.size} pares da coleta. "
         "O simulado cobre a mesma faixa e o centro das reais; os builds lentos "
-        "com cache aparecem só na cauda da lognormal, e numa amostra de 15 "
+        f"com cache aparecem só na cauda da lognormal, e numa amostra de {com.size} "
         "nem sempre são sorteados."
     )
 

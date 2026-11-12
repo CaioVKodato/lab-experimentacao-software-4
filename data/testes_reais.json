@@ -1,0 +1,44 @@
+{
+  "fonte": "builds.csv",
+  "alpha": 0.05,
+  "alternativa": "bicaudal",
+  "n_pares": 30,
+  "diff_sem_menos_com": {
+    "mean": 0.1509249666666667,
+    "median": 0.157101
+  },
+  "graus_liberdade_t": 29,
+  "testes": [
+    {
+      "teste": "t pareado",
+      "estatistica": 23.969268862121318,
+      "nome_estatistica": "t",
+      "p_valor": 1.152569976913965e-20,
+      "rejeita_h0": true,
+      "interpretacao": "t pareado: p = 1.153e-20 < α = 0.05. Rejeitamos H₀: há evidência de que o cache reduz o tempo de build.",
+      "tamanho_efeito": {
+        "d_z": 4.3761697475633445,
+        "diferenca_media_s": 0.1509249666666667,
+        "ic95_diferenca_media_s": [
+          0.13804696786995085,
+          0.16380296546338252
+        ],
+        "reducao_relativa_media": 0.4755946444318047
+      }
+    },
+    {
+      "teste": "Wilcoxon pareado",
+      "estatistica": 465.0,
+      "nome_estatistica": "W⁺",
+      "p_valor": 1.862645149230957e-09,
+      "rejeita_h0": true,
+      "interpretacao": "Wilcoxon pareado: p = 1.863e-09 < α = 0.05. Rejeitamos H₀: há evidência de que o cache reduz o tempo de build.",
+      "tamanho_efeito": {
+        "r_rank_biserial": 1.0,
+        "diferenca_mediana_s": 0.157101,
+        "hodges_lehmann_s": 0.15443600000000002,
+        "reducao_relativa_mediana": 0.5050902549708955
+      }
+    }
+  ]
+}

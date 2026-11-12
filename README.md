@@ -49,7 +49,9 @@ python testar_simulado.py                       # data/simulado.csv
 python testar_simulado.py --input data/builds.csv --output data/testes_reais.json
 ```
 
-Grava `data/testes_simulado.json` com estatística, p-valor e interpretação de cada teste (bicaudal, α = 0,05). Em código: `testes.aplicar_testes(sem, com)`.
+Grava `data/testes_simulado.json` com estatística, p-valor, interpretação e tamanho de efeito de cada teste (bicaudal, α = 0,05). Em código: `testes.aplicar_testes(sem, com)`.
+
+A segunda linha aplica os testes nos dados reais e grava `data/testes_reais.json`, que a seção 6 do dashboard lê (Issue #21). Tamanho de efeito (`src/testes/efeito.py`): d_z e IC 95% da diferença média no t pareado; r rank-biserial e Hodges-Lehmann no Wilcoxon pareado.
 
 Q1 — erro tipo I (Issue #13):
 
@@ -83,7 +85,7 @@ pip install -r requirements.txt
 streamlit run dashboard.py
 ```
 
-Abre em http://localhost:8501. Lê `data/builds.csv`, `data/simulado.csv`, `data/params.json` e `data/testes_simulado.json`; os gráficos são gerados em código (`src/painel/graficos.py`).
+Abre em http://localhost:8501. Lê `data/builds.csv`, `data/simulado.csv`, `data/params.json`, `data/testes_simulado.json`, `data/testes_reais.json` e os CSVs de Q1–Q3; os gráficos são gerados em código (`src/painel/graficos.py`).
 
 ## Sprint 1 (Issues)
 

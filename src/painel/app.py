@@ -11,7 +11,15 @@ from params.io import load_builds_csv
 from simulacao import DEFAULT_SEED, gerar_pares, load_sim_params
 from testes import ALPHA, aplicar_testes, separar_pares
 
-from .graficos import fig_g1, fig_g2, fig_g3, taxas_erro_tipo_i
+from .graficos import (
+    curvas_poder,
+    efeito_para_poder,
+    fig_g1,
+    fig_g2,
+    fig_g3,
+    fig_g4,
+    taxas_erro_tipo_i,
+)
 
 DATA = REPO_ROOT / "data"
 REPO_URL = "https://github.com/CaioVKodato/lab-experimentacao-software-4"
@@ -205,9 +213,69 @@ def secao_erro_tipo_i() -> None:
     )
 
 
+PODER_ALVO = 0.8
+EMPATE_PP = 1.0  # diferença de poder abaixo disso (p.p.) conta como empate
+
+
+def _leitura_g4(curvas: pd.DataFrame) -> str:
+    """Texto do G4 montado a partir dos CSVs, para acompanhar a simulação."""
+    partes = []
+    for condicao, grupo in curvas.groupby("condicao", sort=False):
+        com_efeito = grupo.loc[grupo["efeito"] > 0]
+        poder = com_efeito.pivot(index="efeito", columns="teste", values="taxa_rejeicao") * 100
+        vantagem_t = poder["t pareado"] - poder["Wilcoxon pareado"]  # p.p.
+
+        maior = vantagem_t.abs().idxmax()
+        gap = vantagem_t[maior]
+        if abs(gap) < EMPATE_PP:
+            leitura = "os dois praticamente empatam"
+        else:
+            lider, outro = (
+                ("t pareado", "Wilcoxon pareado") if gap > 0 else ("Wilcoxon pareado", "t pareado")
+            )
+            leitura = (
+                f"o **{lider}** detecta melhor, com até {abs(gap):.0f} p.p. a mais "
+                f"(efeito de {maior:.0%}: {poder.loc[maior, lider]:.0f}% × "
+                f"{poder.loc[maior, outro]:.0f}%)"
+            )
+            relevantes = vantagem_t[vantagem_t.abs() >= EMPATE_PP]
+            if (relevantes > 0).any() and (relevantes < 0).any():
+                leitura += ", mas a vantagem troca de lado ao longo dos efeitos"
+            if poder.iloc[-1].min() >= 99:
+                leitura += ", e a diferença some nos efeitos grandes, quando os dois chegam a ~100%"
+
+        efeitos_80 = []
+        for teste in ("t pareado", "Wilcoxon pareado"):
+            e = efeito_para_poder(grupo.loc[grupo["teste"] == teste], PODER_ALVO)
+            efeitos_80.append(f"{teste.split()[0]} {e:.1%}" if e is not None else f"{teste.split()[0]} não chega")
+        partes.append(
+            f"em **{condicao}** (n={grupo['n'].iloc[0]}), {leitura}; "
+            f"efeito para {PODER_ALVO:.0%} de poder: {', '.join(efeitos_80)}"
+        )
+
+    leitura = ". ".join(p[0].upper() + p[1:] for p in partes)
+    return leitura + "."
+
+
+def secao_poder() -> None:
+    st.header("5. Poder")
+    q2, q3 = DATA / "q2.csv", DATA / "q3.csv"
+    if not (q2.exists() and q3.exists()):
+        st.warning("Rode `python simular_q2.py` e `python simular_q3.py` para gerar o G4.")
+        return
+
+    curvas = curvas_poder(pd.read_csv(q2), pd.read_csv(q3))
+    st.pyplot(fig_g4(curvas, PODER_ALVO))
+    st.markdown(
+        "Cada ponto é a proporção de rejeições de H₀ em 10.000 conjuntos com o cache "
+        "reduzindo o tempo de build pelo efeito do eixo x; em efeito 0 a curva é o "
+        "erro tipo I do G3. Quanto mais cedo a curva sobe, mais poder o teste tem. "
+        + _leitura_g4(curvas)
+    )
+
+
 def secoes_pendentes() -> None:
     for titulo in (
-        "5. Poder",
         "6. Dados reais",
         "7. Conclusão",
     ):
@@ -228,4 +296,5 @@ def main() -> None:
     secao_dados(reais, simulados, sim)
     secao_testes(simulados, sim)
     secao_erro_tipo_i()
+    secao_poder()
     secoes_pendentes()

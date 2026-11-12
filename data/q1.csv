@@ -1,0 +1,3 @@
+nome,n,efeito,tipo,teste,repeticoes,rejeicoes,taxa_rejeicao,ic95_inf,ic95_sup,alpha,seed
+base,30,0.000000,lognormal,t pareado,10000,482,0.048200,0.044173,0.052574,0.050000,42
+base,30,0.000000,lognormal,Wilcoxon pareado,10000,494,0.049400,0.045323,0.053823,0.050000,42

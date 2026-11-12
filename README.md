@@ -59,6 +59,15 @@ python simular_q1.py
 
 Gera `data/q1.csv`: 10.000 conjuntos com H₀ verdadeira (n = 30, sem e com cache da mesma lognormal), taxa de rejeição de cada teste com IC 95% (Wilson, ~±0,43 p.p.). Semente 42 → mesmo arquivo. O motor fica em `src/simulacao/motor.py`: `simular_cenario(Cenario(nome, n, efeito, tipo), sim)` serve também para Q2 (efeito > 0) e Q3 (novos tipos em `GERADORES`).
 
+Q2 — poder com efeitos crescentes (Issue #14):
+
+```bash
+python simular_q2.py
+python simular_q2.py --efeitos 0 0.02 0.05   # outra grade
+```
+
+Gera `data/q2.csv`: taxa de rejeição de cada teste para efeitos de 0% a 10% de redução do tempo com cache (10.000 repetições por efeito, n = 30, semente 42). A escolha da grade está em `docs/cenario.md`.
+
 Dashboard (S01/S02):
 
 ```bash

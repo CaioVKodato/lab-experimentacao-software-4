@@ -40,6 +40,14 @@ Distribuição: **lognormal** em cada condição, com `mu` e `sigma` estimados e
 
 Parâmetros versionados em `data/params.json`.
 
+### Grade de efeitos do Q2 (poder)
+
+Nas simulações de erro tipo I e poder, os dois tempos do par saem da **mesma** lognormal (a do build sem cache, μ ≈ -1.150, σ ≈ 0.068), então a diferença é simétrica em torno de zero e H₀ vale para os dois testes. O efeito entra como **redução relativa** do tempo com cache: `com = com × (1 − efeito)`.
+
+Grade: **0%, 1%, 2%, 3%, 4%, 5%, 6%, 8% e 10%**, com 10.000 repetições cada e n = 30 pares (`python simular_q2.py` → `data/q2.csv`).
+
+Por que esses valores e não o efeito real: na amostra coletada o cache reduz o tempo em ~50%, o que dá poder de 100% nos dois testes já com poucos pares — a curva seria uma linha reta em 1. Com a variação de ~7% entre builds (σ em log), a curva sai de 5% em efeito 0, passa de 80% por volta de 5% e chega a ~100% em 10%. A grade é mais fina até 6% porque é onde o poder muda rápido, e começa em zero para ligar com o Q1.
+
 ## Expectativa antes de simular
 
 Esperamos que o **Wilcoxon pareado** se saia melhor (ou pelo menos tão bem) que o t pareado quando os dados forem bem assimétricos ou tiverem outliers — que é o caso do `com_cache` (assimetria ≈ 2.33).

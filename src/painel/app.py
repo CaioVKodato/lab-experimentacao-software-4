@@ -306,13 +306,112 @@ def secao_poder() -> None:
     )
 
 
+COHEN_GRANDE = 0.8  # d a partir do qual Cohen chama o efeito de grande
+
+
+def _efeito_formatado(teste: dict) -> str:
+    """Tamanho de efeito de cada teste na própria escala e em segundos."""
+    efeito = teste["tamanho_efeito"]
+    if teste["teste"] == "t pareado":
+        inferior, superior = efeito["ic95_diferenca_media_s"]
+        return (
+            f"d_z = {efeito['d_z']:.2f}; diferença média {efeito['diferenca_media_s']:.3f} s "
+            f"(IC 95%: {inferior:.3f} a {superior:.3f} s), "
+            f"redução de {efeito['reducao_relativa_media']:.0%}"
+        )
+    return (
+        f"r = {efeito['r_rank_biserial']:.2f}; diferença mediana "
+        f"{efeito['diferenca_mediana_s']:.3f} s (Hodges-Lehmann {efeito['hodges_lehmann_s']:.3f} s), "
+        f"redução de {efeito['reducao_relativa_mediana']:.0%}"
+    )
+
+
+def _conclusao_teste(teste: dict, alpha: float) -> str:
+    if not teste["rejeita_h0"]:
+        return f"Não rejeita H₀ (p ≥ {alpha}): sem evidência de que o cache muda o tempo"
+    efeito = teste["tamanho_efeito"]
+    # D = sem − com: positivo quer dizer build mais rápido com cache
+    centro = (efeito["diferenca_media_s"] if teste["teste"] == "t pareado"
+              else efeito["diferenca_mediana_s"])
+    sentido = "reduz" if centro > 0 else "aumenta"
+    return f"Rejeita H₀ (p < {alpha}): o cache {sentido} o tempo de build"
+
+
+def _leitura_dados_reais(res: dict, curvas: pd.DataFrame | None) -> str:
+    """Texto da seção 6 montado a partir do JSON e das curvas de poder."""
+    t, w = (next(x for x in res["testes"] if x["teste"] == nome)
+            for nome in ("t pareado", "Wilcoxon pareado"))
+    et, ew = t["tamanho_efeito"], w["tamanho_efeito"]
+
+    aplicacao = (f"Aplicados aos {res['n_pares']} pares de `data/builds.csv` "
+                 f"(bicaudais, α = {res['alpha']}), ")
+    if t["rejeita_h0"] == w["rejeita_h0"]:
+        decisao = "rejeitam" if t["rejeita_h0"] else "não rejeitam"
+        frase = aplicacao + f"os dois testes {decisao} H₀ e chegam à mesma conclusão. "
+    else:
+        frase = (aplicacao + "os testes discordam: só o "
+                 f"{t['teste'] if t['rejeita_h0'] else w['teste']} rejeita H₀. ")
+
+    tamanho = "grande" if abs(et["d_z"]) >= COHEN_GRANDE else "menor que o limiar de efeito grande"
+    frase += (f"Estatisticamente o efeito é {tamanho}: d_z = {et['d_z']:.2f} "
+              f"(Cohen chama de grande a partir de {COHEN_GRANDE}) e r = {ew['r_rank_biserial']:.2f}")
+    if ew["r_rank_biserial"] == 1:
+        frase += ", ou seja, todos os pares ficaram mais rápidos com cache"
+    tempo_sem_cache = et["diferenca_media_s"] / et["reducao_relativa_media"]
+    frase += (
+        f". Na prática, são {et['diferenca_media_s']:.3f} s a menos por build "
+        f"(redução de {et['reducao_relativa_media']:.0%}): a importância prática não vem do "
+        f"p-valor, e sim de quanto esse tempo pesa; num build de {tempo_sem_cache:.2f} s "
+        "quase não se sente, num build de minutos uma redução dessas mudaria o dia a dia do time."
+    )
+
+    if curvas is not None:
+        base = curvas.loc[curvas["condicao"] == curvas["condicao"].iloc[0]]
+        maior = base["efeito"].max()
+        poder = base.loc[base["efeito"] == maior, "taxa_rejeicao"].min()
+        if et["reducao_relativa_media"] > maior:
+            frase += (
+                f" O efeito real (~{et['reducao_relativa_media']:.0%}) passa muito do maior "
+                f"efeito do G4 na situação base ({maior:.0%}), onde os dois já têm "
+                f"{poder:.0%} de poder; por isso a concordância aqui não mostra qual teste é "
+                "melhor, e essa resposta vem das simulações."
+            )
+    return frase
+
+
+def secao_dados_reais() -> None:
+    st.header("6. Dados reais")
+    path = DATA / "testes_reais.json"
+    if not path.exists():
+        st.warning(
+            "Rode `python testar_simulado.py --input data/builds.csv "
+            "--output data/testes_reais.json` para gerar o resultado."
+        )
+        return
+
+    res = json.loads(path.read_text(encoding="utf-8"))
+    alpha = res["alpha"]
+    st.table(
+        pd.DataFrame(
+            {
+                "Teste": t["teste"],
+                "Estatística": f"{t['nome_estatistica']} = {t['estatistica']:.4g}",
+                "p-valor": f"{t['p_valor']:.3g}",
+                "Tamanho do efeito": _efeito_formatado(t),
+                "Conclusão": _conclusao_teste(t, alpha),
+            }
+            for t in res["testes"]
+        ).set_index("Teste")
+    )
+
+    q2, q3 = DATA / "q2.csv", DATA / "q3.csv"
+    curvas = curvas_poder(pd.read_csv(q2), pd.read_csv(q3)) if q2.exists() and q3.exists() else None
+    st.markdown(_leitura_dados_reais(res, curvas))
+
+
 def secoes_pendentes() -> None:
-    for titulo in (
-        "6. Dados reais",
-        "7. Conclusão",
-    ):
-        st.header(titulo)
-        st.caption("Sprint 2.")
+    st.header("7. Conclusão")
+    st.caption("Entrega final.")
 
 
 def main() -> None:
@@ -329,4 +428,5 @@ def main() -> None:
     secao_testes(simulados, sim)
     secao_erro_tipo_i()
     secao_poder()
+    secao_dados_reais()
     secoes_pendentes()

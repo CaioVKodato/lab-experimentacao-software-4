@@ -158,3 +158,65 @@ def fig_g2(
     sufixo = f" — {titulo}" if titulo else ""
     fig.suptitle(f"G2 — Estatística dos testes sob H₀ (α = {alpha}){sufixo}")
     return fig
+
+
+def taxas_erro_tipo_i(q1: pd.DataFrame, q3: pd.DataFrame) -> pd.DataFrame:
+    """
+    Junta as linhas com H₀ verdadeira (efeito 0): a base vem do Q1 e as
+    violações do Q3. Uma linha por (condição, teste), na ordem do Q3.
+    """
+    base = q1.rename(columns={"nome": "condicao"})
+    base = base.loc[base["efeito"] == 0]
+    violacoes = q3.loc[(q3["efeito"] == 0) & ~q3["condicao"].isin(base["condicao"])]
+    return pd.concat([base, violacoes], ignore_index=True)
+
+
+def _ic_acaso(alpha: float, repeticoes: int) -> float:
+    """Meia largura do IC 95% de uma taxa igual a α: variação só pelo acaso."""
+    return 1.959963984540054 * np.sqrt(alpha * (1 - alpha) / repeticoes)
+
+
+def fig_g3(taxas: pd.DataFrame) -> plt.Figure:
+    """
+    G3: erro tipo I de cada teste em cada condição (H₀ verdadeira), com IC 95%,
+    a linha em α e a faixa que a simulação varia só pelo acaso.
+    """
+    alpha = float(taxas["alpha"].iloc[0])
+    repeticoes = int(taxas["repeticoes"].iloc[0])
+    condicoes = list(dict.fromkeys(taxas["condicao"]))
+    n_por_condicao = taxas.groupby("condicao", sort=False)["n"].first()
+    testes = list(COR_TESTE)
+    x = np.arange(len(condicoes))
+    largura = 0.36
+
+    fig, ax = plt.subplots(figsize=(11, 4.2), constrained_layout=True)
+    faixa = _ic_acaso(alpha, repeticoes)
+    ax.axhspan((alpha - faixa) * 100, (alpha + faixa) * 100, color="#999999", alpha=0.15,
+               label=f"Variação só pelo acaso (±{faixa * 100:.2f} p.p.)")
+    ax.axhline(alpha * 100, color="black", linestyle="--", linewidth=1,
+               label=f"α = {alpha:.0%}")
+
+    for i, teste in enumerate(testes):
+        linhas = (
+            taxas.loc[taxas["teste"] == teste].set_index("condicao").loc[condicoes]
+        )
+        taxa = linhas["taxa_rejeicao"].to_numpy() * 100
+        erro = np.vstack([
+            taxa - linhas["ic95_inf"].to_numpy() * 100,
+            linhas["ic95_sup"].to_numpy() * 100 - taxa,
+        ])
+        pos = x + (i - 0.5) * largura
+        ax.bar(pos, taxa, width=largura, color=COR_TESTE[teste], label=teste,
+               yerr=erro, capsize=4, error_kw={"linewidth": 1})
+        for xi, yi in zip(pos, taxa):
+            ax.text(xi, yi / 2, f"{yi:.1f}%", ha="center", va="center",
+                    fontsize=8, color="white")
+
+    ax.set_xticks(x, [f"{c}\n(n={n_por_condicao[c]})" for c in condicoes])
+    ax.set_xlabel("Situação simulada (H₀ verdadeira)")
+    ax.set_ylabel("Erro tipo I (% de rejeições)")
+    ax.set_ylim(0, max(alpha * 100 * 1.6, taxas["ic95_sup"].max() * 100 * 1.15))
+    ax.legend(fontsize=8, loc="upper right", ncols=2)
+    rep = f"{repeticoes:,}".replace(",", ".")
+    ax.set_title(f"G3 — Erro tipo I dos testes por situação ({rep} repetições, IC 95%)")
+    return fig

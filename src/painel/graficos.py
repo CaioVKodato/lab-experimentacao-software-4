@@ -220,3 +220,72 @@ def fig_g3(taxas: pd.DataFrame) -> plt.Figure:
     rep = f"{repeticoes:,}".replace(",", ".")
     ax.set_title(f"G3 — Erro tipo I dos testes por situação ({rep} repetições, IC 95%)")
     return fig
+
+
+def curvas_poder(q2: pd.DataFrame, q3: pd.DataFrame) -> pd.DataFrame:
+    """
+    Taxa de rejeição por efeito: a base vem do Q2 e as violações do Q3.
+    Uma linha por (condição, efeito, teste), na ordem do Q3.
+    """
+    base = q2.rename(columns={"nome": "condicao"})
+    violacoes = q3.loc[~q3["condicao"].isin(base["condicao"])]
+    return pd.concat([base, violacoes], ignore_index=True)
+
+
+def efeito_para_poder(curva: pd.DataFrame, alvo: float = 0.8) -> float | None:
+    """Menor efeito em que a curva (efeito, taxa_rejeicao) chega ao alvo, interpolado."""
+    curva = curva.sort_values("efeito")
+    efeitos = curva["efeito"].to_numpy()
+    taxas = curva["taxa_rejeicao"].to_numpy()
+    acima = np.flatnonzero(taxas >= alvo)
+    if acima.size == 0:
+        return None
+    i = acima[0]
+    if i == 0:
+        return float(efeitos[0])
+    x0, x1, y0, y1 = efeitos[i - 1], efeitos[i], taxas[i - 1], taxas[i]
+    return float(x0 + (alvo - y0) * (x1 - x0) / (y1 - y0))
+
+
+def fig_g4(curvas: pd.DataFrame, alvo: float = 0.8) -> plt.Figure:
+    """
+    G4: curvas de poder dos dois testes (proporção de rejeições × efeito),
+    um painel por situação, com o IC 95% de cada ponto como faixa.
+    """
+    alpha = float(curvas["alpha"].iloc[0])
+    condicoes = list(dict.fromkeys(curvas["condicao"]))
+    colunas = 2
+    linhas_grade = int(np.ceil(len(condicoes) / colunas))
+    fig, axes = plt.subplots(
+        linhas_grade, colunas, figsize=(11, 3.4 * linhas_grade),
+        sharex=True, sharey=True, constrained_layout=True, squeeze=False,
+    )
+
+    for ax, condicao in zip(axes.ravel(), condicoes):
+        grupo = curvas.loc[curvas["condicao"] == condicao]
+        for teste, cor in COR_TESTE.items():
+            curva = grupo.loc[grupo["teste"] == teste].sort_values("efeito")
+            x = curva["efeito"].to_numpy() * 100
+            ax.fill_between(x, curva["ic95_inf"] * 100, curva["ic95_sup"] * 100,
+                            color=cor, alpha=0.2, linewidth=0)
+            ax.plot(x, curva["taxa_rejeicao"] * 100, color=cor, marker="o",
+                    markersize=3.5, linewidth=1.8, label=teste)
+        ax.axhline(alpha * 100, color="black", linestyle="--", linewidth=1,
+                   label=f"α = {alpha:.0%}")
+        ax.axhline(alvo * 100, color="#999999", linestyle=":", linewidth=1.2,
+                   label=f"Poder de {alvo:.0%}")
+        ax.set_title(f"{condicao} (n={grupo['n'].iloc[0]})", fontsize=10)
+        ax.set_ylim(0, 103)
+        ax.grid(alpha=0.3)
+
+    for ax in axes.ravel()[len(condicoes):]:
+        ax.set_visible(False)
+    for ax in axes[-1]:
+        ax.set_xlabel("Tamanho do efeito (% de redução do tempo de build)")
+    for ax in axes[:, 0]:
+        ax.set_ylabel("Rejeições de H₀ (%)")
+    axes[0, 0].legend(fontsize=8, loc="lower right")
+
+    repeticoes = f"{int(curvas['repeticoes'].iloc[0]):,}".replace(",", ".")
+    fig.suptitle(f"G4 — Curvas de poder por situação ({repeticoes} repetições por ponto, IC 95%)")
+    return fig

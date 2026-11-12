@@ -25,7 +25,8 @@ from .graficos import (
 DATA = REPO_ROOT / "data"
 REPO_URL = "https://github.com/CaioVKodato/lab-experimentacao-software-4"
 PROJECT_URL = "https://github.com/users/CaioVKodato/projects/9"
-DASHBOARD_URL = None  # preencher quando publicar
+# o dashboard não é publicado: o link leva às instruções para abrir localmente
+COMO_ABRIR_URL = f"{REPO_URL}#dashboard"
 EFEITO_DIDATICO = 0.02  # deslocamento em log(tempo) do exemplo do G2
 AREA_MINIMA_VISIVEL = 1e-3  # abaixo disso o hachurado do p-valor some no G2
 
@@ -35,9 +36,9 @@ def _resumo(df: pd.DataFrame, cond: str) -> pd.Series:
 
 
 def secao_links() -> None:
-    dashboard = f"[Dashboard]({DASHBOARD_URL})" if DASHBOARD_URL else "Dashboard: *(a publicar)*"
     st.markdown(
-        f"[Repositório]({REPO_URL}) · [GitHub Projects]({PROJECT_URL}) · {dashboard}"
+        f"[Repositório]({REPO_URL}) · [GitHub Projects]({PROJECT_URL}) · "
+        f"[Dashboard: como abrir]({COMO_ABRIR_URL}) (`streamlit run dashboard.py`)"
     )
 
 

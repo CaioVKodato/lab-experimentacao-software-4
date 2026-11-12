@@ -6,6 +6,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEMO_BUILD = REPO_ROOT / "fixtures" / "demo_build"
 DEFAULT_CSV = REPO_ROOT / "data" / "builds.csv"
+# o enunciado pede cerca de 30 observações por grupo comparado
+DEFAULT_N_PAIRS = 30
 
 
 @dataclass(frozen=True)
@@ -14,7 +16,7 @@ class CollectConfig:
 
     project_dir: Path = DEMO_BUILD
     output_csv: Path = DEFAULT_CSV
-    n_pairs: int = 15
+    n_pairs: int = DEFAULT_N_PAIRS
     python_exe: str = "python"
 
     @property

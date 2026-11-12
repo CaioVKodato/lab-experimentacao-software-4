@@ -7,6 +7,7 @@ import pandas as pd
 import streamlit as st
 
 from coleta.config import REPO_ROOT
+from params import outliers_iqr
 from params.io import load_builds_csv
 from simulacao import DEFAULT_SEED, gerar_pares, load_sim_params
 from testes import ALPHA, aplicar_testes, separar_pares
@@ -44,13 +45,28 @@ def secao_cenario(reais: pd.DataFrame) -> None:
     st.header("1. Cenário")
     n_pares = reais["run"].nunique()
     st.markdown(
-        "**Pergunta:** o cache reduz o tempo de build do projeto demo?\n\n"
-        "- **H₀:** a diferença de tempo (sem cache − com cache) é zero; "
-        "o cache não muda o tempo de build.\n"
-        "- **H₁:** a diferença é diferente de zero (bicaudal).\n\n"
-        "Testes comparados: **t pareado** × **Wilcoxon pareado**.\n\n"
-        f"Dados reais: {n_pares} pares de builds do projeto `fixtures/demo_build/`, "
-        "rodados na mesma máquina com e sem cache (`python coletar_builds.py`)."
+        "**Pergunta:** ativar o cache muda o tempo de build do projeto demo?\n\n"
+        "Em cada par *i*, medimos o mesmo build sem e com cache e olhamos a diferença "
+        r"$D_i = T_{\text{sem},i} - T_{\text{com},i}$ (em segundos; positiva quando "
+        "o cache deixa o build mais rápido). Testes comparados: **t pareado** × "
+        "**Wilcoxon pareado**, com α = 0,05.\n\n"
+        "| Teste | H₀ | H₁ |\n"
+        "|---|---|---|\n"
+        r"| t pareado | $\mu_D = 0$: em média, ligar o cache não muda o tempo de build "
+        r"| $\mu_D \neq 0$: em média, o tempo muda (para menos ou para mais) |"
+        "\n"
+        r"| Wilcoxon pareado | $D$ simétrica em torno de 0 (mediana $= 0$): ganhar ou "
+        "perder tempo com o cache é igualmente provável "
+        r"| $D$ deslocada de 0 (mediana $\neq 0$): o cache tende a acelerar ou a atrasar "
+        "o build |\n\n"
+        "Os dois testes são **bicaudais** (2,5% de α em cada cauda). Antes de medir, não "
+        "dava para descartar que o cache deixasse o build mais lento: com ele ligado, o "
+        "build lê e grava artefatos e o manifesto em disco, um custo que pode superar a "
+        "economia. O bicaudal detecta efeito nos dois sentidos e o sinal de D diz depois "
+        "para que lado o cache mexeu.\n\n"
+        f"**Dados reais:** {n_pares} pares ({2 * n_pares} builds) do projeto "
+        "`fixtures/demo_build/`, medidos na mesma máquina, alternando sem e com cache "
+        f"(`python coletar_builds.py`). Registro da coleta em [data/README.md]({REPO_URL}/blob/main/data/README.md)."
     )
 
 
@@ -68,8 +84,24 @@ def secao_dados(reais: pd.DataFrame, simulados: pd.DataFrame, sim: dict) -> None
         f"(`data/params.json`), e o mesmo n={com.size} pares da coleta. "
         "O simulado cobre a mesma faixa e o centro das reais; os builds lentos "
         f"com cache aparecem só na cauda da lognormal, e numa amostra de {com.size} "
-        "nem sempre são sorteados."
+        "nem sempre são sorteados. " + _leitura_outliers(reais)
     )
+
+
+def _leitura_outliers(reais: pd.DataFrame) -> str:
+    """Frase com os outliers de cada condição pela regra de 1,5·IQR."""
+    partes = []
+    for cond, rotulo in (("sem_cache", "sem cache"), ("com_cache", "com cache")):
+        builds = outliers_iqr(reais.loc[reais["condicao"] == cond])["builds"]
+        if not builds:
+            partes.append(f"nenhum {rotulo}")
+            continue
+        lista = " e ".join(f"run {b['run']} com {b['tempo_s']:.3f} s" for b in builds)
+        plural = "outlier" if len(builds) == 1 else "outliers"
+        partes.append(f"{len(builds)} {plural} {rotulo} ({lista})")
+    # quem tem outlier aparece primeiro: "2 outliers com cache (...) e nenhum sem cache"
+    partes.sort(key=lambda parte: parte.startswith("nenhum"))
+    return f"Pela regra de 1,5·IQR (a do boxplot), há {' e '.join(partes)}."
 
 
 def _exemplo_didatico(sim: dict) -> tuple[np.ndarray, np.ndarray]:

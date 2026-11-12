@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from .efeito import efeito_t_pareado, efeito_wilcoxon_pareado
+
 ALPHA = 0.05
 
 
@@ -75,7 +77,8 @@ def aplicar_testes(
 
     t pareado compara a média das diferenças com zero;
     Wilcoxon compara os postos das diferenças (mediana) com zero e
-    reporta W⁺ como estatística.
+    reporta W⁺ como estatística. Cada teste leva o tamanho de efeito na
+    própria escala (ver testes.efeito).
     """
     sem = np.asarray(sem, dtype=float)
     com = np.asarray(com, dtype=float)
@@ -85,9 +88,11 @@ def aplicar_testes(
     w = stats.wilcoxon(sem, com, alternative="two-sided")
 
     resultados = []
-    for nome, estatistica, nome_estat, p_valor, centro in (
-        ("t pareado", t.statistic, "t", t.pvalue, np.mean(diffs)),
-        ("Wilcoxon pareado", soma_postos_positivos(diffs), "W⁺", w.pvalue, np.median(diffs)),
+    for nome, estatistica, nome_estat, p_valor, centro, efeito in (
+        ("t pareado", t.statistic, "t", t.pvalue, np.mean(diffs),
+         efeito_t_pareado(sem, com)),
+        ("Wilcoxon pareado", soma_postos_positivos(diffs), "W⁺", w.pvalue, np.median(diffs),
+         efeito_wilcoxon_pareado(sem, com)),
     ):
         p_valor = float(p_valor)
         resultados.append(
@@ -98,6 +103,7 @@ def aplicar_testes(
                 "p_valor": p_valor,
                 "rejeita_h0": bool(p_valor < alpha),
                 "interpretacao": _interpretar(nome, p_valor, alpha, centro),
+                "tamanho_efeito": efeito,
             }
         )
 

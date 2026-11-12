@@ -51,7 +51,14 @@ python testar_simulado.py --input data/builds.csv --output data/testes_reais.jso
 
 Grava `data/testes_simulado.json` com estatística, p-valor e interpretação de cada teste (bicaudal, α = 0,05). Em código: `testes.aplicar_testes(sem, com)`.
 
-Dashboard (S01/S02): *(preencher — comando único)*
+Dashboard (S01/S02):
+
+```bash
+pip install -r requirements.txt
+streamlit run dashboard.py
+```
+
+Abre em http://localhost:8501. Lê `data/builds.csv`, `data/simulado.csv`, `data/params.json` e `data/testes_simulado.json`; os gráficos são gerados em código (`src/painel/graficos.py`).
 
 ## Sprint 1 (Issues)
 

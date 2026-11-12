@@ -6,6 +6,7 @@ from pathlib import Path
 
 from coleta.config import REPO_ROOT
 from params.io import load_builds_csv
+from terminal import usar_utf8_na_saida
 
 from .pareados import ALPHA, aplicar_testes, separar_pares
 
@@ -39,6 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    usar_utf8_na_saida()
     args = build_parser().parse_args(argv)
     sem, com = separar_pares(load_builds_csv(args.input))
     resultado = aplicar_testes(sem, com, alpha=args.alpha)
@@ -58,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     for teste in resultado["testes"]:
         print(
-            f"{teste['teste']:<17} {teste['nome_estatistica']}={teste['estatistica']:.4f}  "
+            f"{teste['teste']:<17} {teste['nome_estatistica']}={teste['estatistica']:.4g}  "
             f"p={teste['p_valor']:.4g}"
         )
         print(f"  {teste['interpretacao']}")

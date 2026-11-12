@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from testes import soma_postos_positivos
+
 CONDICOES = {"sem_cache": "Sem cache", "com_cache": "Com cache"}
 # cores fixas por origem do dado; os testes ganham as próprias no G2–G4
 COR_REAL = "#4C72B0"
@@ -112,11 +114,11 @@ def _painel_t(ax: plt.Axes, diffs: np.ndarray, alpha: float) -> None:
 
 
 def _painel_wilcoxon(ax: plt.Axes, diffs: np.ndarray, alpha: float) -> None:
-    n = diffs.size
+    # diferenças nulas não entram no Wilcoxon, nem no n da distribuição
+    n = int(np.count_nonzero(diffs))
     ws, probs = _wilcoxon_nula(n)
     centro = n * (n + 1) / 4
-    postos = stats.rankdata(np.abs(diffs))
-    w_obs = float(postos[diffs > 0].sum())
+    w_obs = soma_postos_positivos(diffs)
     distancia = abs(w_obs - centro)
     p = float(min(1.0, probs[np.abs(ws - centro) >= distancia].sum()))
 

@@ -19,8 +19,8 @@
     },
     {
       "teste": "Wilcoxon pareado",
-      "estatistica": 0.0,
-      "nome_estatistica": "W",
+      "estatistica": 465.0,
+      "nome_estatistica": "W⁺",
       "p_valor": 1.862645149230957e-09,
       "rejeita_h0": true,
       "interpretacao": "Wilcoxon pareado: p = 1.863e-09 < α = 0.05. Rejeitamos H₀: há evidência de que o cache reduz o tempo de build."

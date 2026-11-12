@@ -18,6 +18,7 @@ REPO_URL = "https://github.com/CaioVKodato/lab-experimentacao-software-4"
 PROJECT_URL = "https://github.com/users/CaioVKodato/projects/9"
 DASHBOARD_URL = None  # preencher quando publicar
 EFEITO_DIDATICO = 0.02  # deslocamento em log(tempo) do exemplo do G2
+AREA_MINIMA_VISIVEL = 1e-3  # abaixo disso o hachurado do p-valor some no G2
 
 
 def _resumo(df: pd.DataFrame, cond: str) -> pd.Series:
@@ -73,6 +74,28 @@ def _exemplo_didatico(sim: dict) -> tuple[np.ndarray, np.ndarray]:
     return separar_pares(gerar_pares(sim_pequeno, rng=np.random.default_rng(DEFAULT_SEED)))
 
 
+def _leitura_do_exemplo(exemplo: str, testes_exemplo: list[dict]) -> str:
+    """Frase do G2 montada a partir dos p-valores, para não ficar desatualizada."""
+    if exemplo.startswith("Efeito pequeno"):
+        contexto = f"No exemplo didático (efeito de {1 - np.exp(-EFEITO_DIDATICO):.0%})"
+    else:
+        contexto = "No conjunto simulado com o efeito do cache"
+
+    leituras = []
+    for teste in testes_exemplo:
+        p = teste["p_valor"]
+        if p < ALPHA:
+            decisao = f"p = {p:.3g} < α, rejeita H₀"
+        else:
+            decisao = f"p = {p:.3g} ≥ α, não rejeita H₀"
+        leituras.append(f"{teste['teste']}: {decisao}")
+    frase = f"{contexto}: {'; '.join(leituras)}."
+
+    if max(t["p_valor"] for t in testes_exemplo) < AREA_MINIMA_VISIVEL:
+        frase += " A área do p-valor é tão pequena que não aparece no gráfico."
+    return frase
+
+
 def secao_testes(simulados: pd.DataFrame, sim: dict) -> None:
     st.header("3. Como os testes funcionam")
 
@@ -87,9 +110,7 @@ def secao_testes(simulados: pd.DataFrame, sim: dict) -> None:
         sem, com = _exemplo_didatico(sim)
     st.pyplot(fig_g2(sem, com, ALPHA, titulo=exemplo))
 
-    res_ex = {t["teste"]: t for t in aplicar_testes(sem, com, ALPHA)["testes"]}
-    p_t = res_ex["t pareado"]["p_valor"]
-    p_w = res_ex["Wilcoxon pareado"]["p_valor"]
+    testes_exemplo = aplicar_testes(sem, com, ALPHA)["testes"]
     st.markdown(
         "O **t pareado** compara a média das diferenças (sem − com cache) com zero, "
         "escalada pelo erro padrão; sob H₀ a estatística segue uma t com n−1 graus de "
@@ -98,11 +119,9 @@ def secao_testes(simulados: pd.DataFrame, sim: dict) -> None:
         "cara ou coroa, o que dá a distribuição exata do painel da direita. "
         f"Como o teste é bicaudal, a região de rejeição são as duas caudas com "
         f"{ALPHA / 2:.1%} cada. O p-valor (hachurado) é a probabilidade, supondo H₀ "
-        "verdadeira, de uma estatística tão ou mais extrema que a observada: "
-        f"{p_t:.3g} no t e {p_w:.3g} no Wilcoxon. Ele não é a probabilidade de H₀ ser "
-        "verdadeira. No exemplo didático (efeito de "
-        f"{1 - np.exp(-EFEITO_DIDATICO):.0%}) os dois ficam acima de α; no simulado, "
-        "o efeito do cache é tão grande que a área não aparece no gráfico."
+        "verdadeira, de uma estatística tão ou mais extrema que a observada. Ele não "
+        "é a probabilidade de H₀ ser verdadeira. "
+        + _leitura_do_exemplo(exemplo, testes_exemplo)
     )
 
     path = DATA / "testes_simulado.json"
@@ -119,7 +138,7 @@ def secao_testes(simulados: pd.DataFrame, sim: dict) -> None:
         pd.DataFrame(
             {
                 "Teste": t["teste"],
-                "Estatística": f"{t['nome_estatistica']} = {t['estatistica']:.3f}",
+                "Estatística": f"{t['nome_estatistica']} = {t['estatistica']:.4g}",
                 "p-valor": f"{t['p_valor']:.3g}",
                 "Rejeita H₀": "sim" if t["rejeita_h0"] else "não",
             }

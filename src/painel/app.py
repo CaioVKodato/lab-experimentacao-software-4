@@ -125,11 +125,11 @@ def _leitura_do_exemplo(exemplo: str, testes_exemplo: list[dict]) -> str:
         else:
             decisao = f"p = {p:.3g} ≥ α, não rejeita H₀"
         leituras.append(f"{teste['teste']}: {decisao}")
-    frase = f"{contexto}: {'; '.join(leituras)}."
+    frase = f"{contexto}: {'; '.join(leituras)}"
 
     if max(t["p_valor"] for t in testes_exemplo) < AREA_MINIMA_VISIVEL:
-        frase += " A área do p-valor é tão pequena que não aparece no gráfico."
-    return frase
+        frase += " (a área do p-valor é tão pequena que não aparece no gráfico)"
+    return frase + "."
 
 
 def secao_testes(simulados: pd.DataFrame, sim: dict) -> None:
@@ -148,15 +148,14 @@ def secao_testes(simulados: pd.DataFrame, sim: dict) -> None:
 
     testes_exemplo = aplicar_testes(sem, com, ALPHA)["testes"]
     st.markdown(
-        "O **t pareado** compara a média das diferenças (sem − com cache) com zero, "
-        "escalada pelo erro padrão; sob H₀ a estatística segue uma t com n−1 graus de "
-        "liberdade. O **Wilcoxon pareado** ignora o tamanho das diferenças e usa os "
-        "postos: W⁺ soma os postos das diferenças positivas e, sob H₀, cada sinal é "
-        "cara ou coroa, o que dá a distribuição exata do painel da direita. "
-        f"Como o teste é bicaudal, a região de rejeição são as duas caudas com "
-        f"{ALPHA / 2:.1%} cada. O p-valor (hachurado) é a probabilidade, supondo H₀ "
-        "verdadeira, de uma estatística tão ou mais extrema que a observada. Ele não "
-        "é a probabilidade de H₀ ser verdadeira. "
+        "O **t pareado** compara a média das diferenças (sem − com cache) com zero e, "
+        "sob H₀, segue uma t com n−1 graus de liberdade; o **Wilcoxon pareado** usa só "
+        "os postos (W⁺ soma os postos das diferenças positivas) e, sob H₀, cada sinal é "
+        "cara ou coroa, o que dá a distribuição exata da direita. "
+        f"Como o teste é bicaudal, a região de rejeição são as duas caudas sombreadas, "
+        f"com {ALPHA / 2:.1%} cada. O p-valor (hachurado) é a probabilidade, supondo H₀ "
+        "verdadeira, de uma estatística tão ou mais extrema que a observada, e não a "
+        "probabilidade de H₀ ser verdadeira. "
         + _leitura_do_exemplo(exemplo, testes_exemplo)
     )
 
@@ -245,44 +244,83 @@ PODER_ALVO = 0.8
 EMPATE_PP = 1.0  # diferença de poder abaixo disso (p.p.) conta como empate
 
 
-def _leitura_g4(curvas: pd.DataFrame) -> str:
-    """Texto do G4 montado a partir dos CSVs, para acompanhar a simulação."""
-    partes = []
+TESTES = ("t pareado", "Wilcoxon pareado")
+
+
+def resumo_poder(curvas: pd.DataFrame) -> list[dict]:
+    """
+    Por situação: quem detecta melhor, a maior vantagem (p.p.) e em que efeito,
+    e o efeito necessário para PODER_ALVO. Usado nos textos do G4 e da conclusão.
+    """
+    resumos = []
     for condicao, grupo in curvas.groupby("condicao", sort=False):
         com_efeito = grupo.loc[grupo["efeito"] > 0]
         poder = com_efeito.pivot(index="efeito", columns="teste", values="taxa_rejeicao") * 100
         vantagem_t = poder["t pareado"] - poder["Wilcoxon pareado"]  # p.p.
-
-        maior = vantagem_t.abs().idxmax()
-        gap = vantagem_t[maior]
+        efeito_maior = vantagem_t.abs().idxmax()
+        gap = float(vantagem_t[efeito_maior])
         if abs(gap) < EMPATE_PP:
-            leitura = "os dois praticamente empatam"
+            lider = None
         else:
-            lider, outro = (
-                ("t pareado", "Wilcoxon pareado") if gap > 0 else ("Wilcoxon pareado", "t pareado")
-            )
-            leitura = (
-                f"o **{lider}** detecta melhor, com até {abs(gap):.0f} p.p. a mais "
-                f"(efeito de {maior:.0%}: {poder.loc[maior, lider]:.0f}% × "
-                f"{poder.loc[maior, outro]:.0f}%)"
-            )
-            relevantes = vantagem_t[vantagem_t.abs() >= EMPATE_PP]
-            if (relevantes > 0).any() and (relevantes < 0).any():
-                leitura += ", mas a vantagem troca de lado ao longo dos efeitos"
-            if poder.iloc[-1].min() >= 99:
-                leitura += ", e a diferença some nos efeitos grandes, quando os dois chegam a ~100%"
+            lider = "t pareado" if gap > 0 else "Wilcoxon pareado"
+        resumos.append({
+            "condicao": condicao,
+            "n": int(grupo["n"].iloc[0]),
+            "lider": lider,
+            "outro": next((t for t in TESTES if t != lider), None) if lider else None,
+            "vantagem_pp": abs(gap),
+            "efeito": float(efeito_maior),
+            "poder": {t: float(poder.loc[efeito_maior, t]) for t in TESTES},
+            "efeito_80": {
+                t: efeito_para_poder(grupo.loc[grupo["teste"] == t], PODER_ALVO) for t in TESTES
+            },
+        })
+    return resumos
 
-        efeitos_80 = []
-        for teste in ("t pareado", "Wilcoxon pareado"):
-            e = efeito_para_poder(grupo.loc[grupo["teste"] == teste], PODER_ALVO)
-            efeitos_80.append(f"{teste.split()[0]} {e:.1%}" if e is not None else f"{teste.split()[0]} não chega")
-        partes.append(
-            f"em **{condicao}** (n={grupo['n'].iloc[0]}), {leitura}; "
-            f"efeito para {PODER_ALVO:.0%} de poder: {', '.join(efeitos_80)}"
+
+def _efeito_80_formatado(efeito: float | None) -> str:
+    return f"{efeito:.1%}" if efeito is not None else "nenhum efeito testado"
+
+
+def _comparacao(resumo: dict, com_nome: bool) -> str:
+    """'outliers, 97% × 40% com 8% de efeito' (vencedor × outro), no efeito de maior vantagem."""
+    lider, outro = resumo["lider"], resumo["outro"]
+    poderes = (f"{resumo['poder'][lider]:.0f}% × {resumo['poder'][outro]:.0f}% "
+               f"com {resumo['efeito']:.0%} de efeito")
+    return f"{resumo['condicao']}, {poderes}" if com_nome else poderes
+
+
+def _leitura_g4(curvas: pd.DataFrame) -> str:
+    """
+    Texto do G4 em até 3 frases (a 4ª é a introdução da seção): a base e,
+    agrupadas pelo teste que vence, as situações com violação.
+    """
+    base, *violacoes = resumo_poder(curvas)
+    e80 = base["efeito_80"]
+    if base["lider"] is None:
+        comparacao_base = "os dois praticamente empatam"
+    else:
+        comparacao_base = (f"o **{base['lider']}** detecta melhor, com até "
+                           f"{base['vantagem_pp']:.0f} p.p. a mais")
+    frases = [
+        f"Na **{base['condicao']}** (n={base['n']}), {comparacao_base}: para "
+        f"{PODER_ALVO:.0%} de poder, o t precisa de {_efeito_80_formatado(e80['t pareado'])} "
+        f"de efeito e o Wilcoxon de {_efeito_80_formatado(e80['Wilcoxon pareado'])}."
+    ]
+
+    for lider in ("Wilcoxon pareado", "t pareado"):
+        grupo = [r for r in violacoes if r["lider"] == lider]
+        if not grupo:
+            continue
+        mudou = "a vantagem muda de lado e " if lider != base["lider"] else ""
+        frases.append(
+            f"Com **{' e '.join(r['condicao'] for r in grupo)}**, {mudou}o **{lider}** detecta "
+            f"melhor ({'; '.join(_comparacao(r, com_nome=len(grupo) > 1) for r in grupo)})."
         )
-
-    leitura = ". ".join(p[0].upper() + p[1:] for p in partes)
-    return leitura + "."
+    empates = [r["condicao"] for r in violacoes if r["lider"] is None]
+    if empates:
+        frases.append(f"Com **{' e '.join(empates)}**, os dois praticamente empatam.")
+    return " ".join(frases)
 
 
 def secao_poder() -> None:
@@ -296,8 +334,8 @@ def secao_poder() -> None:
     st.pyplot(fig_g4(curvas, PODER_ALVO))
     st.markdown(
         "Cada ponto é a proporção de rejeições de H₀ em 10.000 conjuntos com o cache "
-        "reduzindo o tempo de build pelo efeito do eixo x; em efeito 0 a curva é o "
-        "erro tipo I do G3. Quanto mais cedo a curva sobe, mais poder o teste tem. "
+        "reduzindo o tempo de build pelo efeito do eixo x (em efeito 0, é o erro tipo I "
+        "do G3): quanto mais cedo a curva sobe, mais poder o teste tem. "
         + _leitura_g4(curvas)
     )
 

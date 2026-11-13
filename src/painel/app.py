@@ -443,9 +443,109 @@ def secao_dados_reais() -> None:
     st.markdown(_leitura_dados_reais(res, curvas))
 
 
-def secoes_pendentes() -> None:
+LIMITACOES = (
+    "**Projeto demo numa máquina só:** o efeito do cache foi construído no próprio projeto, "
+    "e o tempo de build depende da carga da máquina no momento da coleta.",
+    "**Modelo da simulação:** a lognormal ajustada subestima a assimetria real; os builds "
+    "lentos entram só pela situação com outliers, que é um modelo simples (×3 em 5% dos pares).",
+    "**Variação dos tempos:** na simulação, os dois tempos do par usam a variação do build sem "
+    "cache; nos dados reais, os builds com cache variam mais.",
+    "**Cobertura:** simulamos só α = 0,05 e dois tamanhos de amostra (30 e 8 pares).",
+)
+
+
+def _taxa(taxas: pd.DataFrame, condicao: str, teste: str) -> float:
+    linha = taxas.loc[(taxas["condicao"] == condicao) & (taxas["teste"] == teste)]
+    return float(linha["taxa_rejeicao"].iloc[0])
+
+
+def _lista(nomes: list[str], negrito: bool = False) -> str:
+    """'a e b'; negrito só fora de st.table, que não interpreta markdown nas células."""
+    return " e ".join(f"**{nome}**" if negrito else nome for nome in nomes)
+
+
+def _esperado_encontrado(taxas: pd.DataFrame, resumos: list[dict], reais: dict) -> list[tuple[str, str]]:
+    """Linhas da tabela 'esperávamos × encontramos'; a expectativa é a de docs/cenario.md."""
+    base, *violacoes = resumos
+    nome_base = base["condicao"]
+    ganha_w = [r for r in violacoes if r["lider"] == "Wilcoxon pareado"]
+    ganha_t = [r for r in violacoes if r["lider"] == "t pareado"]
+    p_t, p_w = (next(t["p_valor"] for t in reais["testes"] if t["teste"] == nome) for nome in TESTES)
+
+    linhas = [(
+        "Com dados bem comportados, os dois perto de 5% de erro tipo I.",
+        f"Confirmado: na {nome_base}, {_taxa(taxas, nome_base, 't pareado'):.1%} no t e "
+        f"{_taxa(taxas, nome_base, 'Wilcoxon pareado'):.1%} no Wilcoxon.",
+    )]
+    if ganha_w:
+        erros_t = " e ".join(f"{_taxa(taxas, r['condicao'], 't pareado'):.1%}" for r in ganha_w)
+        linhas.append((
+            "O Wilcoxon melhor, ou pelo menos igual, com assimetria ou outliers.",
+            f"Confirmado com outliers: em {_lista([r['condicao'] for r in ganha_w])} o Wilcoxon detecta "
+            f"até {max(r['vantagem_pp'] for r in ganha_w):.0f} p.p. a mais, e o t fica conservador "
+            f"({erros_t} de erro tipo I).",
+        ))
+    if ganha_t:
+        erros_w = " e ".join(f"{_taxa(taxas, r['condicao'], 'Wilcoxon pareado'):.1%}" for r in ganha_t)
+        linhas.append((
+            "A vantagem do Wilcoxon aparecendo nas violações do Q3.",
+            f"Só em parte: em {_lista([r['condicao'] for r in ganha_t])} quem detecta melhor é o t "
+            f"(até {max(r['vantagem_pp'] for r in ganha_t):.0f} p.p.), e o Wilcoxon fica conservador "
+            f"({erros_w}), porque com poucos pares ele só consegue rejeitar em poucos resultados.",
+        ))
+    linhas.append((
+        "Com o efeito real (~0.15 s) e 30 pares, os dois detectando o cache.",
+        f"Confirmado: nos dados reais os dois rejeitam H₀ (p = {p_t:.2g} no t e {p_w:.2g} no Wilcoxon).",
+    ))
+    return linhas
+
+
+def secao_conclusao(reais: pd.DataFrame) -> None:
     st.header("7. Conclusão")
-    st.caption("Entrega final.")
+    arquivos = [DATA / nome for nome in ("q1.csv", "q2.csv", "q3.csv", "testes_reais.json")]
+    if not all(caminho.exists() for caminho in arquivos):
+        st.warning(
+            "Rode `python simular_q1.py`, `simular_q2.py`, `simular_q3.py` e "
+            "`testar_simulado.py --input data/builds.csv --output data/testes_reais.json`."
+        )
+        return
+
+    q1, q2, q3 = (pd.read_csv(caminho) for caminho in arquivos[:3])
+    taxas = taxas_erro_tipo_i(q1, q3)
+    resumos = resumo_poder(curvas_poder(q2, q3))
+    res_reais = json.loads(arquivos[3].read_text(encoding="utf-8"))
+
+    st.table(pd.DataFrame(
+        _esperado_encontrado(taxas, resumos, res_reais),
+        columns=["Esperávamos (antes de simular)", "Encontramos"],
+    ).set_index("Esperávamos (antes de simular)"))
+
+    base, *violacoes = resumos
+    ganha_w = [r for r in violacoes if r["lider"] == "Wilcoxon pareado"]
+    ganha_t = [r for r in violacoes if r["lider"] == "t pareado"]
+    perda_base = base["vantagem_pp"] if base["lider"] == "t pareado" else 0.0
+    com_cache = reais.loc[reais["condicao"] == "com_cache"]
+    n_outliers = len(outliers_iqr(com_cache)["builds"])
+
+    texto = (
+        "**Recomendação: Wilcoxon pareado** para comparar tempos de build com e sem cache. "
+        f"Builds lentos isolados acontecem ({n_outliers} dos {len(com_cache)} builds com cache da "
+        "nossa coleta são outliers)"
+    )
+    if ganha_w:
+        texto += (f", e com eles o t fica conservador e perde até "
+                  f"{max(r['vantagem_pp'] for r in ganha_w):.0f} p.p. de poder")
+    texto += f"; sem outliers, o Wilcoxon perde no máximo {perda_base:.0f} p.p. para o t. É um seguro barato.\n\n"
+    if ganha_t:
+        texto += (
+            f"**Quando mudaríamos para o t pareado:** com amostras muito pequenas e sem builds fora "
+            f"da curva ({_lista([r['condicao'] for r in ganha_t], negrito=True)}, n={ganha_t[0]['n']}), onde o "
+            f"Wilcoxon exato é discreto demais e o t detecta até "
+            f"{max(r['vantagem_pp'] for r in ganha_t):.0f} p.p. a mais; e quando o objetivo for "
+            "estimar a economia média em segundos, com intervalo de confiança, que é o que o t descreve.\n\n"
+        )
+    texto += "**Limitações:**\n" + "\n".join(f"- {item}" for item in LIMITACOES)
+    st.markdown(texto)
 
 
 def main() -> None:
@@ -463,4 +563,4 @@ def main() -> None:
     secao_erro_tipo_i()
     secao_poder()
     secao_dados_reais()
-    secoes_pendentes()
+    secao_conclusao(reais)

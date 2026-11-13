@@ -14,6 +14,18 @@ Tempo de build antes e depois de ativar o cache.
 
 - Repositório: https://github.com/CaioVKodato/lab-experimentacao-software-4
 - GitHub Projects: https://github.com/users/CaioVKodato/projects/9
+- Dashboard: roda localmente, veja [Dashboard](#dashboard)
+
+## Dashboard
+
+Com Python 3.12:
+
+```bash
+pip install -r requirements.txt
+streamlit run dashboard.py
+```
+
+Abre em http://localhost:8501. Os dados e os resultados das simulações já estão versionados em `data/`, então o dashboard abre sem rodar nada antes. As versões das dependências estão fixadas em `requirements.txt` (as mesmas em que o projeto foi testado).
 
 ## Como rodar
 

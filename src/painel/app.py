@@ -444,24 +444,19 @@ def secao_dados_reais() -> None:
 
 
 LIMITACOES = (
-    "**Projeto demo numa máquina só:** o efeito do cache foi construído no próprio projeto, "
-    "e o tempo de build depende da carga da máquina no momento da coleta.",
-    "**Modelo da simulação:** a lognormal ajustada subestima a assimetria real; os builds "
-    "lentos entram só pela situação com outliers, que é um modelo simples (×3 em 5% dos pares).",
-    "**Variação dos tempos:** na simulação, os dois tempos do par usam a variação do build sem "
-    "cache; nos dados reais, os builds com cache variam mais.",
-    "**Cobertura:** simulamos só α = 0,05 e dois tamanhos de amostra (30 e 8 pares).",
+    "O estudo tem limites que vale deixar claros. Medimos um projeto de demonstração feito para o "
+    "trabalho, numa única máquina, então tanto o efeito do cache quanto a variação entre builds "
+    "dependem desse ambiente. A lognormal acompanha bem o centro dos dados, mas não gera sozinha "
+    "os builds lentos: eles só entram na situação com outliers, que é um modelo simples (um build "
+    "3× mais lento em 5% dos pares). Na simulação, os dois lados do par usam a variação do build "
+    "sem cache, e nos dados reais os builds com cache variam mais. Também só testamos α = 0.05 e "
+    "amostras de 30 e de 8 pares."
 )
 
 
 def _taxa(taxas: pd.DataFrame, condicao: str, teste: str) -> float:
     linha = taxas.loc[(taxas["condicao"] == condicao) & (taxas["teste"] == teste)]
     return float(linha["taxa_rejeicao"].iloc[0])
-
-
-def _lista(nomes: list[str], negrito: bool = False) -> str:
-    """'a e b'; negrito só fora de st.table, que não interpreta markdown nas células."""
-    return " e ".join(f"**{nome}**" if negrito else nome for nome in nomes)
 
 
 def _esperado_encontrado(taxas: pd.DataFrame, resumos: list[dict], reais: dict) -> list[tuple[str, str]]:
@@ -473,29 +468,30 @@ def _esperado_encontrado(taxas: pd.DataFrame, resumos: list[dict], reais: dict) 
     p_t, p_w = (next(t["p_valor"] for t in reais["testes"] if t["teste"] == nome) for nome in TESTES)
 
     linhas = [(
-        "Com dados bem comportados, os dois perto de 5% de erro tipo I.",
-        f"Confirmado: na {nome_base}, {_taxa(taxas, nome_base, 't pareado'):.1%} no t e "
-        f"{_taxa(taxas, nome_base, 'Wilcoxon pareado'):.1%} no Wilcoxon.",
+        "Que os dois testes errassem perto de 5% quando o cache não muda nada.",
+        f"Foi o que aconteceu com os dados sem problemas: {_taxa(taxas, nome_base, 't pareado'):.1%} "
+        f"no t e {_taxa(taxas, nome_base, 'Wilcoxon pareado'):.1%} no Wilcoxon.",
     )]
     if ganha_w:
         erros_t = " e ".join(f"{_taxa(taxas, r['condicao'], 't pareado'):.1%}" for r in ganha_w)
         linhas.append((
-            "O Wilcoxon melhor, ou pelo menos igual, com assimetria ou outliers.",
-            f"Confirmado com outliers: em {_lista([r['condicao'] for r in ganha_w])} o Wilcoxon detecta "
-            f"até {max(r['vantagem_pp'] for r in ganha_w):.0f} p.p. a mais, e o t fica conservador "
-            f"({erros_t} de erro tipo I).",
+            "Que o Wilcoxon se saísse melhor com dados assimétricos ou com outliers.",
+            f"Com outliers, sim, e com folga: ele chegou a detectar "
+            f"{max(r['vantagem_pp'] for r in ganha_w):.0f} pontos percentuais a mais que o t, que "
+            f"ficou conservador ({erros_t} de erro tipo I).",
         ))
     if ganha_t:
         erros_w = " e ".join(f"{_taxa(taxas, r['condicao'], 'Wilcoxon pareado'):.1%}" for r in ganha_t)
         linhas.append((
-            "A vantagem do Wilcoxon aparecendo nas violações do Q3.",
-            f"Só em parte: em {_lista([r['condicao'] for r in ganha_t])} quem detecta melhor é o t "
-            f"(até {max(r['vantagem_pp'] for r in ganha_t):.0f} p.p.), e o Wilcoxon fica conservador "
-            f"({erros_w}), porque com poucos pares ele só consegue rejeitar em poucos resultados.",
+            "Que essa vantagem do Wilcoxon aparecesse em todas as situações difíceis.",
+            f"Não apareceu com poucos dados: com só {ganha_t[0]['n']} pares e sem outliers, o t "
+            f"detectou até {max(r['vantagem_pp'] for r in ganha_t):.0f} pontos a mais, e o Wilcoxon "
+            f"ficou em {erros_w} de erro tipo I, porque com tão poucos pares ele tem poucos "
+            "resultados possíveis.",
         ))
     linhas.append((
-        "Com o efeito real (~0.15 s) e 30 pares, os dois detectando o cache.",
-        f"Confirmado: nos dados reais os dois rejeitam H₀ (p = {p_t:.2g} no t e {p_w:.2g} no Wilcoxon).",
+        "Que os dois percebessem o efeito do cache nos nossos builds.",
+        f"Perceberam, e com muita margem: p = {p_t:.2g} no t e {p_w:.2g} no Wilcoxon.",
     ))
     return linhas
 
@@ -515,10 +511,12 @@ def secao_conclusao(reais: pd.DataFrame) -> None:
     resumos = resumo_poder(curvas_poder(q2, q3))
     res_reais = json.loads(arquivos[3].read_text(encoding="utf-8"))
 
+    st.markdown("Antes de rodar as simulações, anotamos o que esperávamos (está em `docs/cenario.md`). "
+                "Comparando com o que vimos:")
     st.table(pd.DataFrame(
         _esperado_encontrado(taxas, resumos, res_reais),
-        columns=["Esperávamos (antes de simular)", "Encontramos"],
-    ).set_index("Esperávamos (antes de simular)"))
+        columns=["O que esperávamos", "O que vimos"],
+    ).set_index("O que esperávamos"))
 
     base, *violacoes = resumos
     ganha_w = [r for r in violacoes if r["lider"] == "Wilcoxon pareado"]
@@ -527,25 +525,27 @@ def secao_conclusao(reais: pd.DataFrame) -> None:
     com_cache = reais.loc[reais["condicao"] == "com_cache"]
     n_outliers = len(outliers_iqr(com_cache)["builds"])
 
-    texto = (
-        "**Recomendação: Wilcoxon pareado** para comparar tempos de build com e sem cache. "
-        f"Builds lentos isolados acontecem ({n_outliers} dos {len(com_cache)} builds com cache da "
-        "nossa coleta são outliers)"
-    )
+    paragrafos = [
+        "No fim, ficamos com o **Wilcoxon pareado** para comparar tempo de build com e sem cache. "
+        f"O que pesou foram os builds lentos isolados: na nossa própria coleta, {n_outliers} dos "
+        f"{len(com_cache)} builds com cache ficaram bem acima dos outros."
+    ]
     if ganha_w:
-        texto += (f", e com eles o t fica conservador e perde até "
-                  f"{max(r['vantagem_pp'] for r in ganha_w):.0f} p.p. de poder")
-    texto += f"; sem outliers, o Wilcoxon perde no máximo {perda_base:.0f} p.p. para o t. É um seguro barato.\n\n"
-    if ganha_t:
-        texto += (
-            f"**Quando mudaríamos para o t pareado:** com amostras muito pequenas e sem builds fora "
-            f"da curva ({_lista([r['condicao'] for r in ganha_t], negrito=True)}, n={ganha_t[0]['n']}), onde o "
-            f"Wilcoxon exato é discreto demais e o t detecta até "
-            f"{max(r['vantagem_pp'] for r in ganha_t):.0f} p.p. a mais; e quando o objetivo for "
-            "estimar a economia média em segundos, com intervalo de confiança, que é o que o t descreve.\n\n"
+        paragrafos[0] += (
+            f" Quando simulamos situações assim, o t perdeu até "
+            f"{max(r['vantagem_pp'] for r in ganha_w):.0f} pontos de poder, enquanto, com os dados "
+            f"sem outliers, o Wilcoxon ficou no máximo {perda_base:.0f} pontos atrás. Abrimos mão de "
+            "muito pouco para nos proteger de um problema que vimos acontecer."
         )
-    texto += "**Limitações:**\n" + "\n".join(f"- {item}" for item in LIMITACOES)
-    st.markdown(texto)
+    if ganha_t:
+        paragrafos.append(
+            "Mudaríamos de ideia se tivéssemos pouquíssimas medições e nenhum build fora da curva: "
+            f"com {ganha_t[0]['n']} pares, o Wilcoxon não consegue usar todo o α e o t passou na "
+            "frente. O t também faz mais sentido quando a pergunta é quanto tempo o cache economiza "
+            "em média, porque ele já entrega essa diferença em segundos, com intervalo de confiança."
+        )
+    paragrafos.append(LIMITACOES)
+    st.markdown("\n\n".join(paragrafos))
 
 
 def main() -> None:

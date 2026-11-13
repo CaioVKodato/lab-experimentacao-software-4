@@ -1,0 +1,6 @@
+# Configuração do Streamlit para este projeto (lida por `streamlit run dashboard.py`).
+
+[server]
+# Roda o dashboard de novo sozinho quando um arquivo do projeto é salvo,
+# inclusive o código em src/, sem precisar clicar em "Rerun".
+runOnSave = true

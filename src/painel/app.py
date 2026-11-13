@@ -25,8 +25,6 @@ from .graficos import (
 DATA = REPO_ROOT / "data"
 REPO_URL = "https://github.com/CaioVKodato/lab-experimentacao-software-4"
 PROJECT_URL = "https://github.com/users/CaioVKodato/projects/9"
-# o dashboard roda localmente: o link leva às instruções do README para abrir
-COMO_ABRIR_URL = f"{REPO_URL}#dashboard"
 EFEITO_DIDATICO = 0.02  # deslocamento em log(tempo) do exemplo do G2
 AREA_MINIMA_VISIVEL = 1e-3  # abaixo disso o hachurado do p-valor some no G2
 
@@ -36,10 +34,7 @@ def _resumo(df: pd.DataFrame, cond: str) -> pd.Series:
 
 
 def secao_links() -> None:
-    st.markdown(
-        f"[Repositório]({REPO_URL}) · [GitHub Projects]({PROJECT_URL}) · "
-        f"[Dashboard: como abrir]({COMO_ABRIR_URL}) (`streamlit run dashboard.py`)"
-    )
+    st.markdown(f"[Repositório]({REPO_URL}) · [GitHub Projects]({PROJECT_URL})")
 
 
 def secao_cenario(reais: pd.DataFrame) -> None:

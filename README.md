@@ -14,7 +14,6 @@ Tempo de build antes e depois de ativar o cache.
 
 - Repositório: https://github.com/CaioVKodato/lab-experimentacao-software-4
 - GitHub Projects: https://github.com/users/CaioVKodato/projects/9
-- Dashboard: roda localmente, veja [Dashboard](#dashboard)
 
 ## Dashboard
 

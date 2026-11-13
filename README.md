@@ -15,7 +15,30 @@ Tempo de build antes e depois de ativar o cache.
 - Repositório: https://github.com/CaioVKodato/lab-experimentacao-software-4
 - GitHub Projects: https://github.com/users/CaioVKodato/projects/9
 
+## Dashboard
+
+Com Python 3.12:
+
+```bash
+pip install -r requirements.txt
+streamlit run dashboard.py
+```
+
+Abre em http://localhost:8501. Os dados e os resultados das simulações já estão versionados em `data/`, então o dashboard abre sem rodar nada antes. As versões das dependências estão fixadas em `requirements.txt` (as mesmas em que o projeto foi testado).
+
 ## Como rodar
+
+### Tudo com um comando (Issue #34)
+
+```bash
+pip install -r requirements.txt
+python rodar_tudo.py               # parâmetros → simulado → testes → Q1, Q2, Q3 (alguns segundos)
+python rodar_tudo.py --dashboard   # o mesmo e abre o dashboard no fim
+```
+
+Regera todos os arquivos de `data/` a partir de `data/builds.csv`, com semente 42: rodar de novo produz os mesmos arquivos. A coleta dos tempos fica de fora porque mede tempos reais, que mudam com a máquina; `python rodar_tudo.py --coletar` recoleta antes de tudo e muda os dados de todo o trabalho.
+
+### Etapa por etapa
 
 Coleta dos tempos de build (Issue #1):
 
@@ -78,16 +101,11 @@ python simular_q3.py
 
 Gera `data/q3.csv` com a coluna `condicao`: base (n = 30), outliers (5% dos pares com um build 3× mais lento), amostra pequena (n = 8) e amostra pequena + outliers. Erro tipo I (efeito 0) e poder (efeitos de 1% a 20%) de cada teste, 10.000 repetições, semente 42. A base vem junto para G3/G4 lerem um arquivo só. Detalhes em `docs/cenario.md`.
 
-Dashboard (S01/S02):
+Dashboard: `streamlit run dashboard.py` (veja [Dashboard](#dashboard)). Lê `data/builds.csv`, `data/simulado.csv`, `data/params.json`, `data/testes_simulado.json`, `data/testes_reais.json` e os CSVs de Q1–Q3; os gráficos são gerados em código (`src/painel/graficos.py`).
 
-```bash
-pip install -r requirements.txt
-streamlit run dashboard.py
-```
+## Issues por sprint
 
-Abre em http://localhost:8501. Lê `data/builds.csv`, `data/simulado.csv`, `data/params.json`, `data/testes_simulado.json`, `data/testes_reais.json` e os CSVs de Q1–Q3; os gráficos são gerados em código (`src/painel/graficos.py`).
-
-## Sprint 1 (Issues)
+### Sprint 1
 
 | # | Issue | Assignee |
 |---|-------|----------|
@@ -95,5 +113,28 @@ Abre em http://localhost:8501. Lê `data/builds.csv`, `data/simulado.csv`, `data
 | 2 | Estimativa de parâmetros | CaioVKodato |
 | 3 | Gerador de dados simulados | Henrique-volponi |
 | 4 | t pareado e Wilcoxon | Henrique-volponi |
-| 5 | Dashboard base + G1 | Kjonps |
-| 6 | G2 no dashboard | Kjonps |
+| 5 | Dashboard base + G1 | Henrique-volponi |
+| 6 | G2 no dashboard | Henrique-volponi |
+
+### Sprint 2
+
+| # | Issue | Assignee |
+|---|-------|----------|
+| 13 | Motor de simulação + Q1 (erro tipo I) | Henrique-volponi |
+| 14 | Q2: poder com tamanhos de efeito crescentes | Henrique-volponi |
+| 15 | Q3: violação dos pressupostos | Henrique-volponi |
+| 16 | G3 no dashboard | Henrique-volponi |
+| 17 | G4 no dashboard | Henrique-volponi |
+| 18 | Recoletar 30 pares de builds | CaioVKodato |
+| 19 | Hipóteses formais e registro dos dados reais | CaioVKodato |
+| 20 | Estatística do Wilcoxon e saída do testar_simulado | CaioVKodato |
+| 21 | Seção 6: testes nos dados reais | CaioVKodato |
+| 22 | Fixar as dependências do dashboard | CaioVKodato |
+
+### Entrega final
+
+| # | Issue | Assignee |
+|---|-------|----------|
+| 32 | Textos de 2 a 4 frases nas seções 3 e 5 | CaioVKodato |
+| 33 | Seção 7: conclusão | CaioVKodato |
+| 34 | Comando único para rodar o projeto + README | Henrique-volponi |
